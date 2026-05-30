@@ -1,0 +1,6 @@
+{
+  "name": "Pickleball Director",
+  "description": "Frictionless mobile-first pickleball tournament management app for directors.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
