@@ -23,7 +23,7 @@ export default function VideoHubView({ videos, setVideos }: VideoHubViewProps) {
   const [loginError, setLoginError] = useState('');
   const [showAuthTooltip, setShowAuthTooltip] = useState(false);
   const [showOwnerLogin, setShowOwnerLogin] = useState(false);
-  const [ownerUsername, setOwnerUsername] = useState('Tinaowner');
+  const [ownerUsername, setOwnerUsername] = useState('');
   const [ownerPassword, setOwnerPassword] = useState('');
 
   const handleLogin = (e: React.FormEvent) => {
@@ -47,7 +47,7 @@ export default function VideoHubView({ videos, setVideos }: VideoHubViewProps) {
       setLoginError(result.error);
       return;
     }
-    setOwnerUsername('Tinaowner');
+    setOwnerUsername('');
     setOwnerPassword('');
     setShowOwnerLogin(false);
   };
@@ -606,8 +606,7 @@ export default function VideoHubView({ videos, setVideos }: VideoHubViewProps) {
                   type="text" 
                   value={ownerUsername}
                   onChange={e => setOwnerUsername(e.target.value)}
-                  className="w-full border border-[#D8CCBD] rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#AED743] focus:outline-none bg-black/5 text-[#95887D]"
-                  readOnly
+                  className="w-full border border-[#D8CCBD] bg-white/50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#AED743] hover:bg-white focus:bg-white focus:outline-none transition-colors"
                 />
               </div>
               <div>

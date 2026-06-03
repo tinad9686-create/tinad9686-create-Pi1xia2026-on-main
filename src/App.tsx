@@ -5,7 +5,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Users, LayoutGrid, Trophy, PlaySquare, ArrowRight } from 'lucide-react';
-import { Player, Team, Match, Video, PlayerStats } from './types';
+import { Player, Team, Match, Video, PlayerStats, TournamentInfo } from './types';
 import PlayersView from './components/PlayersView';
 import MatchesView from './components/MatchesView';
 import LeaderboardView from './components/LeaderboardView';
@@ -16,17 +16,24 @@ type Tab = 'players' | 'matches' | 'leaderboard' | 'videos';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('videos');
+  const [tournamentInfo, setTournamentInfo] = useState<TournamentInfo>({ name: '', date: '', location: '' });
   const [players, setPlayers] = useState<Player[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [videos, setVideos] = useState<Video[]>([
     {
       id: 'v1',
-      title: 'Championship Match Highlights',
-      url: 'https://www.youtube.com/embed/jNQXAC9IVRw', // Using a placeholder embed
+      title: 'Tournament Highlights',
+      url: 'https://www.youtube.com/embed/xsew3pKBLlw?controls=1&modestbranding=1&rel=0',
       comments: [
         { id: 'c1', author: 'Director', text: 'Great rally at 10-9!', timestamp: new Date() }
       ]
+    },
+    {
+      id: 'v2',
+      title: 'Pickleball Basics',
+      url: 'https://www.youtube.com/embed/OLyodmMGzK8?controls=1&modestbranding=1&rel=0',
+      comments: []
     }
   ]);
   const [numCourts, setNumCourts] = useState<number>(4);
@@ -104,9 +111,11 @@ export default function App() {
     const statsMap: Record<string, PlayerStats> = {};
     
     players.forEach(p => {
-      statsMap[p.id] = { playerId: p.id, wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0, pointDiff: 0 };
+      statsMap[p.id] = { playerId: p.id, wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0, pointDiff: 0, winStreak: 0, currentStreak: 0 };
     });
 
+    // Make sure matches are sorted chronologically if there's an implicit order
+    // We'll process them in the order they appear in the array
     matches.filter(m => m.isCompleted).forEach(match => {
       const team1 = teams.find(t => t.id === match.team1Id);
       const team2 = teams.find(t => t.id === match.team2Id);
@@ -121,8 +130,20 @@ export default function App() {
             statsMap[pid].pointsFor += pointsFor;
             statsMap[pid].pointsAgainst += pointsAgainst;
             statsMap[pid].pointDiff += (pointsFor - pointsAgainst);
-            if (won) statsMap[pid].wins += 1;
-            else if (pointsFor < pointsAgainst) statsMap[pid].losses += 1; // avoid incrementing loss on ties unless necessary, assuming pickleball has no ties
+            
+            if (won) {
+              statsMap[pid].wins += 1;
+              statsMap[pid].currentStreak += 1;
+              if (statsMap[pid].currentStreak > statsMap[pid].winStreak) {
+                statsMap[pid].winStreak = statsMap[pid].currentStreak;
+              }
+            } else if (pointsFor < pointsAgainst) {
+              statsMap[pid].losses += 1;
+              statsMap[pid].currentStreak = 0;
+            } else {
+              // Tie, breaks streak or maintains? Usually breaks win streak, but let's reset it to be safe
+              statsMap[pid].currentStreak = 0;
+            }
           }
         });
       };
@@ -188,6 +209,8 @@ export default function App() {
             setNumCourts={setNumCourts}
             cycles={cycles}
             setCycles={setCycles}
+            tournamentInfo={tournamentInfo}
+            setTournamentInfo={setTournamentInfo}
           />
         )}
         {activeTab === 'matches' && (
@@ -201,7 +224,7 @@ export default function App() {
           />
         )}
         {activeTab === 'leaderboard' && (
-          <LeaderboardView leaderboard={leaderboard} players={players} />
+          <LeaderboardView leaderboard={leaderboard} players={players} tournamentInfo={tournamentInfo} />
         )}
         {activeTab === 'videos' && (
            <VideoHubView videos={videos} setVideos={setVideos} />

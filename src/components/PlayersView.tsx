@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Player, Team } from '../types';
+import { Player, Team, TournamentInfo } from '../types';
 import { generateId, parseCSV } from '../utils';
 import { UserPlus, Upload, Trash2, Play, Users } from 'lucide-react';
 
@@ -11,9 +11,21 @@ interface PlayersViewProps {
   setNumCourts: (num: number) => void;
   cycles: number | '';
   setCycles: (num: number | '') => void;
+  tournamentInfo: TournamentInfo;
+  setTournamentInfo: React.Dispatch<React.SetStateAction<TournamentInfo>>;
 }
 
-export default function PlayersView({ players, setPlayers, onGenerateMatches, numCourts, setNumCourts, cycles, setCycles }: PlayersViewProps) {
+export default function PlayersView({ 
+  players, 
+  setPlayers, 
+  onGenerateMatches, 
+  numCourts, 
+  setNumCourts, 
+  cycles, 
+  setCycles,
+  tournamentInfo,
+  setTournamentInfo
+}: PlayersViewProps) {
   const [name, setName] = useState('');
   const [skill, setSkill] = useState('3.0');
   const [gender, setGender] = useState<'Male' | 'Female'>('Male');
@@ -122,6 +134,34 @@ export default function PlayersView({ players, setPlayers, onGenerateMatches, nu
 
   return (
     <div className="p-4 space-y-6 max-w-2xl mx-auto">
+      {/* Tournament Info Form */}
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 space-y-3">
+        <h3 className="font-semibold text-gray-800 text-sm uppercase tracking-wider">Tournament Info <span className="text-gray-400 font-normal lowercase">(For Print/Export)</span></h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <input
+            type="text"
+            placeholder="Tournament Name"
+            value={tournamentInfo.name}
+            onChange={(e) => setTournamentInfo({...tournamentInfo, name: e.target.value})}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#DF8D79] focus:outline-none"
+          />
+          <input
+            type="date"
+            placeholder="Date"
+            value={tournamentInfo.date}
+            onChange={(e) => setTournamentInfo({...tournamentInfo, date: e.target.value})}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#DF8D79] focus:outline-none"
+          />
+          <input
+            type="text"
+            placeholder="Location"
+            value={tournamentInfo.location}
+            onChange={(e) => setTournamentInfo({...tournamentInfo, location: e.target.value})}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#DF8D79] focus:outline-none"
+          />
+        </div>
+      </div>
+
       {/* Header section w/ Start Tourney button */}
       <div className="flex flex-col gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
         <div className="flex justify-between items-center mb-1">

@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { PlayerStats, Player } from '../types';
-import { Medal, Printer } from 'lucide-react';
+import { PlayerStats, Player, TournamentInfo } from '../types';
+import { Medal, Printer, Copy, CheckCircle } from 'lucide-react';
 
 interface LeaderboardViewProps {
   leaderboard: PlayerStats[];
   players: Player[];
+  tournamentInfo: TournamentInfo;
 }
 
-export default function LeaderboardView({ leaderboard, players }: LeaderboardViewProps) {
+export default function LeaderboardView({ leaderboard, players, tournamentInfo }: LeaderboardViewProps) {
   const [showPrintHint, setShowPrintHint] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const getPlayerName = (playerId: string) => players.find(p => p.id === playerId)?.name || 'Unknown';
 
@@ -30,6 +32,35 @@ export default function LeaderboardView({ leaderboard, players }: LeaderboardVie
   const avgPointDiff = totalMatchesPlayed > 0 
     ? (sumAbsDiff / (totalMatchesPlayed * 4)).toFixed(1) 
     : '0.0';
+
+  let highestStreakPlayer = 'N/A';
+  let maxWinStreak = 0;
+  leaderboard.forEach(stat => {
+    if (stat.winStreak > maxWinStreak) {
+      maxWinStreak = stat.winStreak;
+      highestStreakPlayer = getPlayerName(stat.playerId);
+    } else if (stat.winStreak === maxWinStreak && maxWinStreak > 0) {
+      // Keep it simple or combine names. If there are ties, maybe just pick the one higher on leaderboard which is already true
+      // since leaderboard is sorted by wins then pointdiff, traversing top-down naturally favors higher ranked players.
+    }
+  });
+
+  const handleCopyLog = (stat: PlayerStats, playerName: string) => {
+    let text = `${playerName} - Tournament Log\n`;
+    if (tournamentInfo.name) text += `Event: ${tournamentInfo.name}\n`;
+    if (tournamentInfo.date) text += `Date: ${tournamentInfo.date}\n`;
+    if (tournamentInfo.location) text += `Location: ${tournamentInfo.location}\n`;
+    text += `\nPerformance:\n`;
+    text += `- Wins: ${stat.wins}\n`;
+    text += `- Losses: ${stat.losses}\n`;
+    text += `- Points For: ${stat.pointsFor}\n`;
+    text += `- Point Differential: ${stat.pointDiff > 0 ? '+' : ''}${stat.pointDiff}\n`;
+    
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedId(stat.playerId);
+      setTimeout(() => setCopiedId(null), 2000);
+    });
+  };
 
   if (leaderboard.length === 0) {
     return (
@@ -103,9 +134,13 @@ export default function LeaderboardView({ leaderboard, players }: LeaderboardVie
               <div className="text-xl font-black text-[#5A4537]">{avgPointDiff}</div>
               <div className="text-[10px] text-[#A3978D] font-bold uppercase tracking-wider mt-1">Avg Point Diff</div>
             </div>
-            <div className="bg-[#DF8D79]/10 p-3 rounded-xl border border-[#DF8D79]/20 shadow-sm text-center">
-              <div className="text-base font-black text-[#A95A47] truncate px-1" title="PXTina1862">PXTina1862</div>
-              <div className="text-[10px] text-[#A95A47] font-bold uppercase tracking-wider mt-1">Highest Win Streak</div>
+            <div className="bg-[#DF8D79]/10 p-3 rounded-xl border border-[#DF8D79]/20 shadow-sm text-center flex flex-col justify-center">
+              <div className="text-base font-black text-[#A95A47] truncate px-1" title={highestStreakPlayer}>
+                {highestStreakPlayer}
+              </div>
+              <div className="text-[10px] text-[#A95A47] font-bold uppercase tracking-wider mt-1">
+                Highest Win Streak {maxWinStreak > 0 ? `(${maxWinStreak})` : ''}
+              </div>
             </div>
           </div>
         </div>
@@ -122,9 +157,16 @@ export default function LeaderboardView({ leaderboard, players }: LeaderboardVie
             </div>
             
             <div className="flex-1 ml-2">
-              <h3 className={`font-bold ${index < 3 ? 'text-lg' : 'text-base'}`}>
-                {getPlayerName(stat.playerId)}
-              </h3>
+              <div className="flex justify-between items-start">
+                <h3 className={`font-bold ${index < 3 ? 'text-lg' : 'text-base'}`}>
+                  {getPlayerName(stat.playerId)}
+                </h3>
+              </div>
+              <div className="flex flex-wrap text-[10px] opacity-70 gap-1.5 mt-0.5 font-semibold uppercase tracking-wider mb-1">
+                {tournamentInfo.name && <span>{tournamentInfo.name}</span>}
+                {tournamentInfo.date && <span>• {new Date(tournamentInfo.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric'})}</span>}
+                {tournamentInfo.location && <span>• {tournamentInfo.location}</span>}
+              </div>
               <div className="flex flex-wrap text-xs opacity-75 gap-x-3 gap-y-1 mt-0.5 font-medium">
                 <span>Losses: {stat.losses}</span>
                 <span>Points For: {stat.pointsFor}</span>
@@ -132,9 +174,18 @@ export default function LeaderboardView({ leaderboard, players }: LeaderboardVie
               </div>
             </div>
             
-            <div className="text-right flex flex-col items-end">
-              <div className="text-2xl font-black opacity-90">{stat.wins}</div>
-              <div className="text-[10px] uppercase tracking-wider opacity-60 font-bold">Wins</div>
+            <div className="flex items-center gap-4">
+              <div className="text-right flex flex-col items-end">
+                <div className="text-2xl font-black opacity-90">{stat.wins}</div>
+                <div className="text-[10px] uppercase tracking-wider opacity-60 font-bold">Wins</div>
+              </div>
+              <button 
+                onClick={() => handleCopyLog(stat, getPlayerName(stat.playerId))}
+                className="opacity-50 hover:opacity-100 transition-opacity p-2 print:hidden"
+                title="Copy performance log for App A"
+              >
+                {copiedId === stat.playerId ? <CheckCircle size={18} className="text-green-600" /> : <Copy size={18} />}
+              </button>
             </div>
           </div>
         ))}

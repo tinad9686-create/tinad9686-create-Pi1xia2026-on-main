@@ -31,6 +31,14 @@ export interface PlayerStats {
   pointsFor: number;
   pointsAgainst: number;
   pointDiff: number;
+  winStreak: number;
+  currentStreak: number;
+}
+
+export interface TournamentInfo {
+  name: string;
+  date: string;
+  location: string;
 }
 
 export interface AppUser {
