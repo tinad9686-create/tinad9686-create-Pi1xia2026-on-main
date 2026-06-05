@@ -23,16 +23,8 @@ export default function App() {
   const [videos, setVideos] = useState<Video[]>([
     {
       id: 'v1',
-      title: 'Tournament Highlights',
-      url: 'https://www.youtube.com/embed/xsew3pKBLlw?controls=1&modestbranding=1&rel=0',
-      comments: [
-        { id: 'c1', author: 'Director', text: 'Great rally at 10-9!', timestamp: new Date() }
-      ]
-    },
-    {
-      id: 'v2',
-      title: 'Pickleball Basics',
-      url: 'https://www.youtube.com/embed/OLyodmMGzK8?controls=1&modestbranding=1&rel=0',
+      title: 'play pickleball, have a fun weekend',
+      url: 'https://www.youtube.com/embed/nfe-qGX4Oec?controls=1&modestbranding=1&rel=0',
       comments: []
     }
   ]);
