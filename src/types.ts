@@ -5,6 +5,7 @@ export interface Player {
   name: string;
   skill: string;
   gender: Gender;
+  ppaScore?: number;
 }
 
 export interface Team {

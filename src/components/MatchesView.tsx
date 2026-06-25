@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Match, Team, Player } from '../types';
-import { Check, Printer, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { Check, Printer, AlertCircle, ChevronDown, ChevronRight, Download } from 'lucide-react';
 
 interface MatchesViewProps {
   matches: Match[];
@@ -32,7 +32,31 @@ export default function MatchesView({ matches, teams, players, leftoverPlayers, 
       window.print();
     }, 100);
   };
-  
+
+  const handleExportCSV = () => {
+    let csvContent = "";
+    matches.forEach(match => {
+      const team1 = teams.find(t => t.id === match.team1Id);
+      const team2 = teams.find(t => t.id === match.team2Id);
+      
+      const t1p1 = getPlayerName(team1?.player1Id || '');
+      const t1p2 = team1?.player2Id ? getPlayerName(team1.player2Id) : '';
+      const t2p1 = getPlayerName(team2?.player1Id || '');
+      const t2p2 = team2?.player2Id ? getPlayerName(team2.player2Id) : '';
+      
+      csvContent += `${t1p1},${t1p2},${match.score1},${t2p1},${t2p2},${match.score2}\n`;
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "matches.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const getTeamLabel = (teamId: string) => {
     const team = teams.find(t => t.id === teamId);
     if (!team) return 'Unknown Team';
@@ -49,7 +73,7 @@ export default function MatchesView({ matches, teams, players, leftoverPlayers, 
 
   if (matches.length === 0) {
     return (
-      <div className="p-8 text-center text-gray-500 mt-10">
+      <div className="p-8 text-center text-gray-500 mt-4">
         <p>No matches generated yet.</p>
         <p className="text-sm mt-2">Go to the Roster tab to start the tournament.</p>
       </div>
@@ -58,7 +82,14 @@ export default function MatchesView({ matches, teams, players, leftoverPlayers, 
 
   return (
     <div className="p-4 space-y-6 max-w-2xl mx-auto">
-      <div className="flex justify-end print:hidden">
+      <div className="flex justify-end items-center gap-3 print:hidden">
+        <button
+          onClick={handleExportCSV}
+          className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+        >
+          <Download size={16} />
+          Export CSV
+        </button>
         <button
           onClick={handlePrint}
           className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium text-sm transition-colors"

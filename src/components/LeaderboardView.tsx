@@ -1,18 +1,36 @@
-import React, { useState } from 'react';
-import { PlayerStats, Player, TournamentInfo } from '../types';
-import { Medal, Printer, Copy, CheckCircle } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { PlayerStats, Player, Team, TournamentInfo } from '../types';
+import { Medal, Printer, Copy, CheckCircle, Upload, ChevronDown } from 'lucide-react';
+import { StandingsMode } from '../App';
 
 interface LeaderboardViewProps {
   leaderboard: PlayerStats[];
   players: Player[];
+  teams: Team[];
   tournamentInfo: TournamentInfo;
+  onImportMatches?: (csv: string) => void;
+  standingsMode: StandingsMode;
+  setStandingsMode: (mode: StandingsMode) => void;
 }
 
-export default function LeaderboardView({ leaderboard, players, tournamentInfo }: LeaderboardViewProps) {
+export default function LeaderboardView({ leaderboard, players, teams, tournamentInfo, onImportMatches, standingsMode, setStandingsMode }: LeaderboardViewProps) {
   const [showPrintHint, setShowPrintHint] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const getPlayerName = (playerId: string) => players.find(p => p.id === playerId)?.name || 'Unknown';
+  const getEntityName = (id: string) => {
+    if (standingsMode === 'individual') {
+      return players.find(p => p.id === id)?.name || 'Unknown';
+    } else {
+      const team = teams.find(t => t.id === id);
+      if (team) {
+        const p1 = players.find(p => p.id === team.player1Id)?.name || 'Unknown';
+        const p2 = team.player2Id && team.player2Id !== team.player1Id ? players.find(p => p.id === team.player2Id)?.name : null;
+        return p2 ? `${p1} & ${p2}` : p1;
+      }
+      return 'Unknown';
+    }
+  };
 
   const handlePrint = () => {
     if (window.top !== window.self) {
@@ -21,6 +39,30 @@ export default function LeaderboardView({ leaderboard, players, tournamentInfo }
     setTimeout(() => {
       window.print();
     }, 100);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        if (text && onImportMatches) {
+          onImportMatches(text);
+        }
+      } catch (err) {
+        console.error("Error importing matches:", err);
+      } finally {
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.onerror = () => {
+      console.error("Error reading file");
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+    reader.readAsText(file);
   };
 
   const totalWinsRecorded = leaderboard.reduce((sum, s) => sum + s.wins, 0);
@@ -38,10 +80,9 @@ export default function LeaderboardView({ leaderboard, players, tournamentInfo }
   leaderboard.forEach(stat => {
     if (stat.winStreak > maxWinStreak) {
       maxWinStreak = stat.winStreak;
-      highestStreakPlayer = getPlayerName(stat.playerId);
+      highestStreakPlayer = getEntityName(stat.playerId);
     } else if (stat.winStreak === maxWinStreak && maxWinStreak > 0) {
-      // Keep it simple or combine names. If there are ties, maybe just pick the one higher on leaderboard which is already true
-      // since leaderboard is sorted by wins then pointdiff, traversing top-down naturally favors higher ranked players.
+      // Keep it simple
     }
   });
 
@@ -62,11 +103,51 @@ export default function LeaderboardView({ leaderboard, players, tournamentInfo }
     });
   };
 
+  const importBanner = (
+    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-4 print:hidden mb-6">
+      <div className="flex-1">
+        <h3 className="font-semibold text-gray-700 mb-1">Standings Format</h3>
+        <div className="relative">
+          <select 
+            value={standingsMode}
+            onChange={(e) => setStandingsMode(e.target.value as StandingsMode)}
+            className="w-full sm:w-64 appearance-none bg-gray-50 border border-gray-200 text-gray-700 py-2 px-3 pr-8 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#DF8D79] transition-colors"
+          >
+            <option value="individual">Individual (e.g. Mixed Doubles, Popcorn)</option>
+            <option value="team-round-robin">Team - Round Robin / Pool Play</option>
+            <option value="team-ppa">Team - PPA Fixed (50% Cut)</option>
+          </select>
+          <ChevronDown className="absolute right-2.5 top-2.5 text-gray-500 pointer-events-none" size={16} />
+        </div>
+      </div>
+      <div>
+        <input 
+          type="file" 
+          accept=".csv" 
+          ref={fileInputRef} 
+          onChange={handleFileUpload} 
+          className="hidden" 
+          id="matches-csv-upload"
+        />
+        <label 
+          htmlFor="matches-csv-upload" 
+          className="text-sm flex items-center gap-1.5 text-blue-600 bg-blue-50 px-4 py-2 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors font-medium whitespace-nowrap"
+        >
+         <Upload size={16} />
+         Import CSV
+        </label>
+      </div>
+    </div>
+  );
+
   if (leaderboard.length === 0) {
     return (
-      <div className="p-8 text-center text-gray-500 mt-10">
-        <p>No matches completed yet.</p>
-        <p className="text-sm mt-2">Check back once scores are submitted.</p>
+      <div className="p-4 max-w-2xl mx-auto space-y-4">
+        {importBanner}
+        <div className="p-8 text-center text-gray-500 mt-10">
+          <p>No matches completed yet.</p>
+          <p className="text-sm mt-2">Check back once scores are submitted.</p>
+        </div>
       </div>
     );
   }
@@ -89,8 +170,11 @@ export default function LeaderboardView({ leaderboard, players, tournamentInfo }
     }
   }
 
+  const ppaCutIndex = standingsMode === 'team-ppa' ? Math.ceil(leaderboard.length / 2) : -1;
+
   return (
     <div className="p-4 max-w-2xl mx-auto space-y-4">
+      {importBanner}
       <div className="flex justify-between items-center px-2 print:hidden">
         <h2 className="text-xl font-bold text-gray-800">Live Standings</h2>
         <button
@@ -148,10 +232,20 @@ export default function LeaderboardView({ leaderboard, players, tournamentInfo }
       
       <div className="space-y-2">
         {leaderboard.map((stat, index) => (
-          <div 
-            key={stat.playerId} 
-            className={`flex items-center p-3 rounded-xl border ${getRankStyle(index)} shadow-sm transition-all duration-200`}
-          >
+          <React.Fragment key={stat.playerId}>
+            {index === ppaCutIndex && (
+              <div className="relative py-4 flex items-center justify-center">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-dashed border-red-300"></div>
+                </div>
+                <div className="relative bg-[#F6EFE9] px-4 text-xs font-bold text-red-500 uppercase tracking-widest">
+                  Cut Line
+                </div>
+              </div>
+            )}
+            <div 
+              className={`flex items-center p-3 rounded-xl border ${getRankStyle(index)} shadow-sm transition-all duration-200 ${index >= ppaCutIndex && ppaCutIndex !== -1 ? 'opacity-60 grayscale-[50%]' : ''}`}
+            >
             <div className="w-10 flex justify-center items-center">
               {getRankIcon(index)}
             </div>
@@ -159,7 +253,7 @@ export default function LeaderboardView({ leaderboard, players, tournamentInfo }
             <div className="flex-1 ml-2">
               <div className="flex justify-between items-start">
                 <h3 className={`font-bold ${index < 3 ? 'text-lg' : 'text-base'}`}>
-                  {getPlayerName(stat.playerId)}
+                  {getEntityName(stat.playerId)}
                 </h3>
               </div>
               <div className="flex flex-wrap text-[10px] opacity-70 gap-1.5 mt-0.5 font-semibold uppercase tracking-wider mb-1">
@@ -180,7 +274,7 @@ export default function LeaderboardView({ leaderboard, players, tournamentInfo }
                 <div className="text-[10px] uppercase tracking-wider opacity-60 font-bold">Wins</div>
               </div>
               <button 
-                onClick={() => handleCopyLog(stat, getPlayerName(stat.playerId))}
+                onClick={() => handleCopyLog(stat, getEntityName(stat.playerId))}
                 className="opacity-50 hover:opacity-100 transition-opacity p-2 print:hidden"
                 title="Copy performance log for App A"
               >
@@ -188,6 +282,7 @@ export default function LeaderboardView({ leaderboard, players, tournamentInfo }
               </button>
             </div>
           </div>
+          </React.Fragment>
         ))}
       </div>
       

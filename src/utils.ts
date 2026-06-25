@@ -5,13 +5,77 @@ export const generateId = () => Math.random().toString(36).substr(2, 9);
 export const parseCSV = (csvText: string): Partial<Player>[] => {
   const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== '');
   return lines.map(line => {
-    const [name, skill, gender] = line.split(',').map(s => s.trim());
+    const parts = line.split(/[,\t;]/).map(s => s.trim().replace(/^"|"$/g, ''));
+    const name = parts[0];
+    const skill = parts[1];
+    const gender = parts[2];
+    const ppaScore = parts[3] ? parseFloat(parts[3]) : undefined;
     return {
       name,
       skill: skill || '3.0',
-      gender: (gender?.toLowerCase().startsWith('m') ? 'Male' : 'Female') as 'Male' | 'Female',
+      gender: (gender?.toLowerCase()?.startsWith('m') ? 'Male' : 'Female') as 'Male' | 'Female',
+      ppaScore: !isNaN(ppaScore as number) ? ppaScore : undefined,
     };
   });
+};
+
+export interface ParsedMatchResult {
+  team1Player1Name: string;
+  team1Player2Name: string;
+  score1: number;
+  team2Player1Name: string;
+  team2Player2Name: string;
+  score2: number;
+}
+
+export const parseMatchResultsCSV = (csvText: string): ParsedMatchResult[] => {
+  const lines = csvText.split(/\r\n|\r|\n/).filter(line => line.trim() !== '');
+  const parsedMatches: ParsedMatchResult[] = [];
+  
+  const parseScore = (val: string) => {
+    if (!val) return 0;
+    const cleaned = val.replace(/[^\d]/g, '');
+    const parsed = parseInt(cleaned, 10);
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const parts = line.split(/[,\t;]/).map(s => s.trim().replace(/^"|"$/g, ''));
+    
+    // Check if it's a 6-column format (t1p1, t1p2, score1, t2p1, t2p2, score2)
+    if (parts.length >= 6 || (parts.length >= 4 && parts[3])) {
+      parsedMatches.push({
+        team1Player1Name: parts[0] || '',
+        team1Player2Name: parts[1] || '',
+        score1: parseScore(parts[2]),
+        team2Player1Name: parts[3] || '',
+        team2Player2Name: parts[4] || '',
+        score2: parseScore(parts[5]),
+      });
+      i++;
+    } 
+    // Check if it's a 3-column format spanning two lines
+    else if (i + 1 < lines.length) {
+      const nextLine = lines[i + 1];
+      const nextParts = nextLine.split(/[,\t;]/).map(s => s.trim().replace(/^"|"$/g, ''));
+      
+      parsedMatches.push({
+        team1Player1Name: parts[0] || '',
+        team1Player2Name: parts[1] || '',
+        score1: parseScore(parts[2] || parts[parts.length - 1]),
+        team2Player1Name: nextParts[0] || '',
+        team2Player2Name: nextParts[1] || '',
+        score2: parseScore(nextParts[2] || nextParts[nextParts.length - 1]),
+      });
+      i += 2;
+    } else {
+      i++; // Skip invalid single line at the end
+    }
+  }
+  
+  return parsedMatches.filter(r => r.team1Player1Name && r.team2Player1Name);
 };
 
 export const generateMixedTeams = (players: Player[]): Team[] => {
@@ -91,6 +155,70 @@ export const generatePopcornTeams = (players: Player[]): Team[] => {
   }
 
   return teams;
+};
+
+export const generatePPAMatches = (teams: Team[], players: Player[], numCourts: number): Match[] => {
+  if (teams.length < 2) return [];
+
+  // 1. Calculate scores for each team
+  const teamScores = teams.map(team => {
+    const p1 = players.find(p => p.id === team.player1Id);
+    const p2 = players.find(p => p.id === team.player2Id);
+    const score1 = p1?.ppaScore || 0;
+    const score2 = p2?.ppaScore || 0;
+    return {
+      team,
+      score: score1 + score2
+    };
+  });
+
+  // 2. Sort teams by score descending
+  teamScores.sort((a, b) => b.score - a.score);
+  const sortedTeams = teamScores.map(t => t.team);
+
+  // 3. Generate seeding order (power of 2)
+  let power = 1;
+  while (power < sortedTeams.length) power *= 2;
+
+  let order = [0, 1];
+  let currentSize = 2;
+  while (currentSize < power) {
+    const nextOrder: number[] = [];
+    for (let i = 0; i < order.length; i++) {
+      nextOrder.push(order[i]);
+      nextOrder.push(currentSize * 2 - 1 - order[i]);
+    }
+    order = nextOrder;
+    currentSize *= 2;
+  }
+
+  // Filter out byes (indices >= sortedTeams.length)
+  const validOrder = order.filter(idx => idx < sortedTeams.length);
+
+  const matches: Match[] = [];
+  let currentCourt = 1;
+  
+  // Create matches according to validOrder pairs
+  for (let i = 0; i < Math.floor(validOrder.length / 2); i++) {
+    const team1Idx = validOrder[i * 2];
+    const team2Idx = validOrder[i * 2 + 1];
+
+    matches.push({
+      id: generateId(),
+      team1Id: sortedTeams[team1Idx].id,
+      team2Id: sortedTeams[team2Idx].id,
+      court: currentCourt,
+      score1: 0,
+      score2: 0,
+      isCompleted: false,
+      round: 1,
+    });
+
+    currentCourt++;
+    if (currentCourt > numCourts) currentCourt = 1;
+  }
+
+  return matches;
 };
 
 export const generateMatches = (teams: Team[], numCourts: number, cycles: number = 1): Match[] => {

@@ -29,6 +29,7 @@ export default function PlayersView({
   const [name, setName] = useState('');
   const [skill, setSkill] = useState('3.0');
   const [gender, setGender] = useState<'Male' | 'Female'>('Male');
+  const [ppaScore, setPpaScore] = useState('');
   const [pendingFormat, setPendingFormat] = useState<'mixed' | 'same-gender' | 'popcorn' | null>(null);
   const [stagedFormat, setStagedFormat] = useState<{ format: 'mixed' | 'same-gender' | 'popcorn', isDynamic: boolean } | null>(null);
   const [isManualBuilder, setIsManualBuilder] = useState(false);
@@ -96,10 +97,12 @@ export default function PlayersView({
       name: name.trim(),
       skill,
       gender,
+      ppaScore: ppaScore ? parseFloat(ppaScore) : undefined,
     };
     
     setPlayers([...players, newPlayer]);
     setName('');
+    setPpaScore('');
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -116,6 +119,7 @@ export default function PlayersView({
           name: p.name || 'Unknown',
           skill: p.skill || '3.0',
           gender: p.gender || 'Male',
+          ppaScore: p.ppaScore,
         }));
         setPlayers(prev => [...prev, ...newPlayers]);
       }
@@ -220,8 +224,8 @@ export default function PlayersView({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
                 <button 
                   onClick={() => setPendingFormat('mixed')}
-                  disabled={players.length < 4}
-                  title="Strictly pairs Male/Female. Any uneven numbers will remain unpaired."
+                  disabled={players.length < 4 || !players.some(p => p.gender === 'Male') || !players.some(p => p.gender === 'Female')}
+                  title="Strictly pairs Male/Female. Requires at least one male and one female."
                   className="flex-1 justify-center bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors text-sm whitespace-nowrap"
                 >
                   <Play size={16} />
@@ -309,6 +313,13 @@ export default function PlayersView({
             required
           />
           <div className="flex gap-2">
+            <input 
+              type="number" 
+              placeholder="PPA Score" 
+              value={ppaScore}
+              onChange={e => setPpaScore(e.target.value)}
+              className="w-24 border border-gray-300 rounded-lg px-2 py-2 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            />
             <select 
               value={skill} 
               onChange={e => setSkill(e.target.value)}
@@ -372,6 +383,14 @@ export default function PlayersView({
                         <option key={s} value={s}>{s}</option>
                       ))}
                     </select>
+                    <span>&bull;</span>
+                    <input 
+                      type="number" 
+                      placeholder="Score"
+                      value={player.ppaScore || ''}
+                      onChange={(e) => updatePlayer(player.id, { ppaScore: e.target.value ? parseFloat(e.target.value) : undefined })}
+                      className="w-16 border border-gray-200 rounded px-1 py-0.5 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
                   </div>
                 </div>
                 <button 
