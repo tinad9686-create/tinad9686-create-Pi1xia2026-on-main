@@ -34,6 +34,7 @@ export default function App() {
   ]);
   const [numCourts, setNumCourts] = useState<number>(4);
   const [cycles, setCycles] = useState<number | ''>('');
+  const [gameUnlocked, setGameUnlocked] = useState(false);
 
   const [leftoverPlayers, setLeftoverPlayers] = useState<Player[]>([]);
 
@@ -347,7 +348,33 @@ export default function App() {
            <VideoHubView videos={videos} setVideos={setVideos} />
         )}
         {activeTab === 'game' && (
-           <NeonGameSandbox scenarioId={3} onExit={() => setActiveTab('videos')} />
+          gameUnlocked ? (
+            <NeonGameSandbox scenarioId={3} onExit={() => setActiveTab('videos')} />
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+              <div 
+                className="bg-[#E5DACD]/40 border border-[#D9AD6A]/30 p-8 rounded-3xl shadow-sm cursor-pointer hover:bg-[#E5DACD]/60 transition-colors"
+                onClick={() => {
+                  const pwd = prompt("Enter passcode to unlock the game:");
+                  if (pwd === "PickleBoss2026") {
+                    setGameUnlocked(true);
+                  } else if (pwd !== null) {
+                    alert("Incorrect passcode.");
+                  }
+                }}
+              >
+                <div className="text-[#D9AD6A] mb-4 flex justify-center">
+                  <svg className="w-16 h-16 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-bold text-[#5A4537] mb-2 font-display">Under Construction</h2>
+                <p className="text-[#8E9CA3] text-sm max-w-xs mx-auto">
+                  This game is currently being built. Check back later!
+                </p>
+              </div>
+            </div>
+          )
         )}
 
         {/* Copyright Footer (Handled inside VideoHubView for videos tab) */}

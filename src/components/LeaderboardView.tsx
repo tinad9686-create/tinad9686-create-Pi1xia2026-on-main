@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { PlayerStats, Player, Team, TournamentInfo } from '../types';
 import { Medal, Printer, Copy, CheckCircle, Upload, ChevronDown } from 'lucide-react';
 import { StandingsMode } from '../App';
+import { useAuth } from '../contexts/AuthContext';
 
 interface LeaderboardViewProps {
   leaderboard: PlayerStats[];
@@ -16,6 +17,8 @@ interface LeaderboardViewProps {
 export default function LeaderboardView({ leaderboard, players, teams, tournamentInfo, onImportMatches, standingsMode, setStandingsMode }: LeaderboardViewProps) {
   const [showPrintHint, setShowPrintHint] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const { currentUser } = useAuth();
+  const isUnlocked = currentUser?.role === 'owner';
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const getEntityName = (id: string) => {
@@ -127,15 +130,23 @@ export default function LeaderboardView({ leaderboard, players, teams, tournamen
           ref={fileInputRef} 
           onChange={handleFileUpload} 
           className="hidden" 
-          id="matches-csv-upload"
         />
-        <label 
-          htmlFor="matches-csv-upload" 
-          className="text-sm flex items-center gap-1.5 text-blue-600 bg-blue-50 px-4 py-2 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors font-medium whitespace-nowrap"
+        <button 
+          onClick={() => {
+            if (isUnlocked) {
+              fileInputRef.current?.click();
+            }
+          }}
+          disabled={!isUnlocked}
+          className={`text-sm flex items-center gap-1.5 px-4 py-2 rounded-lg transition-colors font-medium whitespace-nowrap ${
+            isUnlocked
+              ? 'text-blue-600 bg-blue-50 hover:bg-blue-100 cursor-pointer'
+              : 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-60'
+          }`}
         >
          <Upload size={16} />
          Import CSV
-        </label>
+        </button>
       </div>
     </div>
   );

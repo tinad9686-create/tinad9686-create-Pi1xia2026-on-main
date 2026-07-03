@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Player, Team, TournamentInfo } from '../types';
 import { generateId, parseCSV } from '../utils';
 import { UserPlus, Upload, Trash2, Play, Users } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface PlayersViewProps {
   players: Player[];
@@ -35,6 +36,8 @@ export default function PlayersView({
   const [isManualBuilder, setIsManualBuilder] = useState(false);
   const [manualTeams, setManualTeams] = useState<Team[]>([]);
   const [selectedPlayersForTeam, setSelectedPlayersForTeam] = useState<string[]>([]);
+  const { currentUser } = useAuth();
+  const isUnlocked = currentUser?.role === 'owner';
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -291,15 +294,23 @@ export default function PlayersView({
                 ref={fileInputRef} 
                 onChange={handleFileUpload} 
                 className="hidden" 
-                id="csv-upload"
               />
-             <label 
-                htmlFor="csv-upload" 
-                className="text-sm flex items-center gap-1.5 text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors font-medium"
+             <button 
+                onClick={() => {
+                  if (isUnlocked) {
+                    fileInputRef.current?.click();
+                  }
+                }}
+                disabled={!isUnlocked}
+                className={`text-sm flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors font-medium ${
+                  isUnlocked 
+                    ? 'text-blue-600 bg-blue-50 hover:bg-blue-100 cursor-pointer' 
+                    : 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-60'
+                }`}
               >
                <Upload size={16} />
                Import CSV
-             </label>
+             </button>
           </div>
         </div>
         
